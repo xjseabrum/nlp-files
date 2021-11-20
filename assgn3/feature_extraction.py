@@ -244,7 +244,7 @@ model_df = df[~(df.group_id.isin(holdout_idx))]
 
 # From this set, create an 80/20 split on this new frame
 train_max = len(set(model_df["group_id"]))
-n_train = m.ceil(0.8 * train_max)
+n_train = m.floor(0.8 * train_max)
 n_valid = m.floor(0.2 * train_max)
 
 uniq_train_group_ids = list(set(model_df["group_id"]))
