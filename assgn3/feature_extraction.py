@@ -4,7 +4,6 @@
 # Read data and find out what the general distribution of the data are.
 # This part is done in the shell
 
-from numpy import unique
 import pandas as pd
 import re as re
 import random as r
