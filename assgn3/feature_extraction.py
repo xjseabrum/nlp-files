@@ -4,11 +4,14 @@
 # Read data and find out what the general distribution of the data are.
 # This part is done in the shell
 
+from numpy import unique
 import pandas as pd
-import numpy as np
 import re as re
+import random as r
+import math as m
 
-def collect_data(txt_file) -> list:
+
+def collect_data(txt_file):
     import pandas as pd
     # Open the text file and delimit it by a single-carriage return
     with open(txt_file, encoding = "utf-8") as file:
@@ -41,8 +44,25 @@ def collect_data(txt_file) -> list:
 
     # Assign the group id
     datafile["group_id"] = temp
-  
     return datafile
+
+def confmat(frame):
+    tp = frame[1][1]
+    tn = frame[0][0]
+    fp = frame[1][0]
+    fn = frame[0][1]
+    
+    tpr = tp / (tp + fn)
+    tnr = tn / (tn + fp)
+
+    prec = tp / (tp+fp)
+    rec = tn / (tn + fn)
+    acc = 0.5 * (tpr + tnr)
+    f1 = (2 * tp) / (2*tp + fp + fn)
+    print("Precision: " + str(round(prec, 4)) + "\n" + 
+          "Recall: " + str(round(rec, 4)) + "\n" + 
+          "bAcc: " + str(round(acc, 4)) + "\n"
+          "F1: " + str(round(f1, 4)))
 
 # Set df equal to the function above
 df = collect_data("S21-gene-train.txt")
@@ -169,9 +189,6 @@ trigger = ["alpha", "beta", "gamma", "delta", "kappa",
            "AP", "NF", "cyclin", "Sp1", "IL", "insulin", 
            "p53", "PKC", "Ras"]
 
-# Create a flag for capturing "ase", or "ases" in the word.
-ase = ["ase", "ases"]
-
 def target(list):
     output = [1 if (x in trigger) 
               else 0 for x in list]
@@ -182,10 +199,55 @@ df["trigger"] = target
 
 
 def ase_finder(search, store):
-    import re as re
     for word in range(len(search)):
-        if (bool((re.search(r'$ase', search[word])) or 
-                (re.search(r'$ases', search[word])))):
+        if (bool((re.search(r'ase\b', search[word])) or 
+                (re.search(r'ases\b', search[word])))):
             store.append(1)
         else:
             store.append(0)
+    return store
+
+ase = []
+ase = ase_finder(df["word"], ase)
+df["ase"] = ase
+
+
+# Checking confmat for the features.
+# df_tr = pd.DataFrame(df.groupby(["bin_tag", "digit"], as_index = False)["count"].agg('size'))
+
+# df_trp = df_tr.pivot(index = "bin_tag", columns = "digit", values = "size")
+# df_trp = df_trp.fillna(0)
+# df_trp['prop1s'] = df_trp[1] / (df_trp[0] + df_trp[1])
+# df_trp["n"] = df_trp[0] + df_trp[1]
+# df_trp
+# confmat(df_trp)
+# df_trp.loc[df_trp["n"] >= 60, "prop1s"].sort_values(0, ascending = False).head(50)
+
+# Going with the following features:
+# is_camel, all_caps, trigger, ase
+# all features are binary
+df["bias"] = 1
+
+
+# Create a 72/18/10 split against the original df 
+# for training/validation/holdout 
+# First create the holdout df
+max = max(df["group_id"])
+uniq_group_id = list(set(df["group_id"]))
+n_holdout = m.floor(0.1 * max)
+holdout_idx = r.sample(uniq_group_id, n_holdout)
+
+holdout_df = df[df.group_id.isin(holdout_idx)]
+
+# Now create the model_df which is all the group_ids
+# not in the holdout_df 
+model_df = df[~(df.group_id.isin(holdout_idx))]
+
+# From this set, create an 80/20 split on this new frame
+train_max = len(set(model_df["group_id"]))
+n_train = m.ceil(0.8 * train_max)
+n_valid = m.floor(0.2 * train_max)
+
+uniq_train_group_ids = list(set(model_df["group_id"]))
+len_ids = len(uniq_train_group_ids)
+# 80/20 split lends itself to 5-fold validation
