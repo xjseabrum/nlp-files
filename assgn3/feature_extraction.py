@@ -8,6 +8,9 @@ import pandas as pd
 import re as re
 import random as r
 import math as m
+import numpy as np
+from datetime import datetime
+import pickle
 
 
 def collect_data(txt_file):
@@ -249,4 +252,88 @@ n_valid = m.floor(0.2 * train_max)
 
 uniq_train_group_ids = list(set(model_df["group_id"]))
 len_ids = len(uniq_train_group_ids)
+
+training_ids = r.sample(uniq_train_group_ids, n_train)
+valid_ids = list(set(uniq_train_group_ids).difference(set(training_ids)))
 # 80/20 split lends itself to 5-fold validation
+
+train = df[df["group_id"].isin(training_ids)]
+y_train = train["bin_tag"]
+x_train = train[["is_camel", "all_caps", "trigger", "ase", "bias"]]
+
+valid = df[df["group_id"].isin(valid_ids)]
+y_valid = valid["bin_tag"]
+x_valid = valid[["is_camel", "all_caps", "trigger", "ase", "bias"]]
+
+
+def sigmoid(z):
+    s = 1 / (1 + m.exp(-z))
+    return s
+
+def deriv_log_loss(correct_class, est_prob, features):
+    dll = np.dot((est_prob - correct_class), features)
+    return dll
+   
+def weight_update(start_weights, eta, grad):
+    new_weights = start_weights - eta * grad
+    return new_weights
+
+class SGD(object):
+    def __init__(self):
+        self.collect_weights = []
+        self.avg_weights = []
+
+    def sgd(self, n_iter, x, y, w, eta, update):
+        for j in range(len(x)):
+            x_list = list(x.iloc[j])
+            y_true = y[j]
+            i = 0
+            while (i < n_iter):
+                y_hat = sigmoid(np.dot(w, x_list))
+                grad = deriv_log_loss(y_true, y_hat, x_list)
+                w = weight_update(w, eta, grad)
+                i += 1
+                if ((i+1) % m.floor(n_iter*update) == 0):
+                    perc = round(100*((i+1) / n_iter),2)
+                    perc2 = round(100*((j+1) / len(x)), 2)
+                    print("Iteration: " + str(i+1) + " of " + str(n_iter) + 
+                          " = " + str(perc) + "% for training row " + 
+                          str(j+1) + " of " + str(len(x)) + " (" + str(perc2) +
+                          "% complete)")
+            self.collect_weights.append(w)
+        
+        for idx in range(len(x.iloc[0])):
+            col_list = [n[idx] for n in self.collect_weights]
+            avg_sum = (1 / len(x)) * sum(col_list)
+            self.avg_weights.append(avg_sum)
+   
+# Set up SGD
+x = x_train.reset_index(drop = True)
+y = y_train.reset_index(drop = True)
+initial_weights = [0] * 5
+n_iter = 1000
+eta = 0.1
+starttime = datetime.now()
+
+sgd = SGD()
+sgd.sgd(n_iter = n_iter, 
+        x = x,
+        y = y,
+        w = initial_weights, 
+        eta = eta,
+        update = 0.5)
+
+endtime = datetime.now()
+difftime = endtime - starttime
+
+print("SGD runtime: ", difftime)
+
+# Pickle the dev weights for later use.  Takes 91 min to run
+# the test set.  Don't want to wait on that again.
+# [7.917653315667114, 5.117136751959736, 10.540264679440895, 3.943252142021299, -9.014895739402096]
+
+dev_weights = sgd.avg_weights
+dev_weights_file = open("dev_weights_file.pkl", "wb")
+pickle.dump(dev_weights, dev_weights_file)
+dev_weights_file.close()
+
