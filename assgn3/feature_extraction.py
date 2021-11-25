@@ -311,7 +311,7 @@ class SGD(object):
 x = x_train.reset_index(drop = True)
 y = y_train.reset_index(drop = True)
 initial_weights = [0] * 5
-n_iter = 1000
+n_iter = 5000
 eta = 0.1
 starttime = datetime.now()
 
@@ -321,7 +321,7 @@ sgd.sgd(n_iter = n_iter,
         y = y,
         w = initial_weights, 
         eta = eta,
-        update = 0.5)
+        update = 1)
 
 endtime = datetime.now()
 difftime = endtime - starttime
@@ -331,9 +331,51 @@ print("SGD runtime: ", difftime)
 # Pickle the dev weights for later use.  Takes 91 min to run
 # the test set.  Don't want to wait on that again.
 # [7.917653315667114, 5.117136751959736, 10.540264679440895, 3.943252142021299, -9.014895739402096]
+#[9.830728851064604, 6.551916215723501, 12.927666067316862, 5.169799672007105, -11.118672541297002]
+
 
 dev_weights = sgd.avg_weights
 dev_weights_file = open("dev_weights_file.pkl", "wb")
 pickle.dump(dev_weights, dev_weights_file)
 dev_weights_file.close()
 
+# with open("dev_weights_file.pkl", "rb") as file:
+#     dev_weights = pickle.load(file)
+
+# Use these weights on the validation set
+
+est = []
+v = valid.reset_index(drop = True)
+x_v = x_valid.reset_index(drop = True)
+for row in range(len(x_v)):
+    x_valid_row = x_v.iloc[row]
+    s = sigmoid(np.dot(dev_weights, x_valid_row))
+    est.append(s)
+
+pred_class = [int(round(x, 0)) for x in est]
+y_v = y_valid.reset_index(drop = True)
+
+v["Pred"] = pred_class
+v["PredLbl"] = "O"
+v.loc[v["Pred"] == 1, ["PredLbl"]] = "I"
+
+adj_lbl = list(v["PredLbl"])
+start = adj_lbl[0]
+comp_lbl = adj_lbl.copy()
+comp_lbl.insert(0, start)
+
+for item in range(len(adj_lbl)):
+    if ((adj_lbl[item] == "I") & (adj_lbl[item] != comp_lbl[item])):
+        adj_lbl[item] = "B"
+    else:
+        pass
+
+v["PredLbl"] = adj_lbl
+
+# Save the actual tags and pred to file
+# so as to run the eval script.
+word_tags = v[["word_id", "word", "tag"]]
+word_pred = v[["word_id", "word", "PredLbl"]]
+
+word_tags.to_csv("actual_tags.txt", sep="\t", header = False, index = False)
+word_pred.to_csv("pred_tags.txt", sep="\t", header = False, index = False)
