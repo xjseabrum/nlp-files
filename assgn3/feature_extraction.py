@@ -175,6 +175,8 @@ df_wtp["n"] = df_wtp[0] + df_wtp[1]
 
 df_wtp.loc[df_wtp["n"] >= 60, "prop1s"].sort_values(0, ascending = False).head(40)
 
+
+
 # Some interesting keywords to note:
 # Greek words: alpha, beta, gamma, delta, kappa are classified as being part of
 # a tag at least 50%+.
@@ -212,6 +214,9 @@ def ase_finder(search, store):
 ase = []
 ase = ase_finder(df["word"], ase)
 df["ase"] = ase
+
+# How many words are in the typical tag?
+
 
 
 # Checking confmat for the features.
