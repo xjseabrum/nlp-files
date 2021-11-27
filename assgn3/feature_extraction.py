@@ -11,7 +11,7 @@ import math as m
 import numpy as np
 from datetime import datetime
 import pickle
-
+import matplotlib.pyplot as plt
 
 def collect_data(txt_file):
     import pandas as pd
@@ -68,6 +68,116 @@ def confmat(frame):
 
 # Set df equal to the function above
 df = collect_data("S21-gene-train.txt")
+tags = list(df["tag"])
+
+
+
+def stupid_dist(max):
+    rand = 100*np.random.rand(1)
+    if rand > 60:
+        return 0
+    if rand > 40:
+        return 1
+    if rand > 20:
+        return 2
+    if rand > 10:
+        return 3
+    if rand > 5:
+        return 4
+    if rand > 2.5:
+        return 5
+    else:
+        return np.random.randint(low = 6, high = max+1)
+
+test = []
+i= 0
+while i < 18000:
+    t = stupid_dist(15)
+    test.append(t)
+    i += 1
+    
+
+plt.hist(test, bins=range(min(test), max(test) + 1, 1))
+plt.show()
+
+# rng = np.random.default_rng()
+# s = rng.poisson(0.78, 18000)
+# plt.hist(s, bins=range(min(s), max(s) + 1, 1))
+# plt.show()
+
+# s2 = rng.poisson(2.45, 18000)
+
+# s2a = [m.ceil(0.25*x) for x in s2]
+# s3 = s + s2a
+# s3a = [m.floor(0.9*x) for x in s3]
+# count, bins, ignored = plt.hist(s3a, 14, density=True)
+# plt.show()
+
+
+# offset = play.copy()
+# offset.insert(0, play[0])
+
+# n = range(len(play))
+# tag_set = []
+# count = 0
+# for element in n:
+#     if play[element]=="O":
+#         count = 0
+#     if play[element]=="B":
+#         count += 1
+#     if ((play[element]=="I") & (offset[element+1] != "B")):
+#         count += 1
+#     else:
+#         count = 0
+#     tag_set.append(count)
+
+
+# play = ["O","O","B","I","O","B","I","B","I","I", "O", "O", "B", "O", "B", "B", "O", "B"]
+# idx1, idx2, count, flag = 0, 0, 0, False
+# tag_set = []
+# # pair = ()
+# for i, element in enumerate(tags):
+#     if element == "B":
+#         idx1 = i
+#         if count > 1:
+#             tag_set.append((count))
+#         count = 1
+#         flag = True
+#     if (((element == "I")) & (flag)):
+#         count += 1
+#         flag = True
+#     if ((element == "O") & (flag)):
+#         tag_set.append(count)
+#         count = 1
+#         flag = False
+#     if (i == len(play)):
+#         tag_set.append(count)
+#         count = -99
+#         flag = False
+
+# idx1, idx2, idx3, flag = 0,0,0,False
+# tag_set = []
+# for i, element in enumerate(play):
+#     idx3 = i
+#     if element == "B":
+#         idx1 = i
+#         print(idx1)
+#         flag = True
+#     if (((element == "O")) & (flag)):
+#         idx2 = i - 1
+#         tag_set.append(idx2 - idx1 + 1)
+#         flag = False
+#     if (((element == "B") & (play[idx3-1] == "I")) & (flag)):
+#         if idx1 == i: pass
+#         tag_set.append(idx2 - idx1)
+#         flag = False
+
+        
+
+
+
+
+    
 
 # Set up a binary tag variable
 tags = list(df["tag"])
@@ -169,13 +279,41 @@ df_wtp = df_wordtag.pivot(index = "word", columns = "bin_tag", values = "size")
 df_wtp = df_wtp.fillna(0)
 df_wtp['prop1s'] = df_wtp[1] / (df_wtp[0] + df_wtp[1])
 df_wtp["n"] = df_wtp[0] + df_wtp[1]
+word_count = df_wtp[["n"]]
+word_count["word"] = word_count.index
+word_count = word_count.reset_index(drop=True)
 
 # Summary on the proportion of tag = 1 over the words, for words
 # mentioned at least 60 times.
+# df_wtp.loc[df_wtp["n"] >= 60, "prop1s"].sort_values(0, ascending = False).head(50)
+word_sort = df_wtp.copy()
+word_sort["word"] = word_sort.index
+word_sort = word_sort[["word", "prop1s"]].reset_index(drop=True)
 
-df_wtp.loc[df_wtp["n"] >= 60, "prop1s"].sort_values(0, ascending = False).head(40)
+# Create a column with this proportion on the dataframe
+merged = pd.merge(df, word_sort, on="word")
+merged = merged.sort_values(by=["group_id","word_id"], ascending=[True, True]).reset_index(drop = True)
+merged["word2"] = merged["word"]
+merged["word2"] = np.where(merged["n"] < 10, "<UNK>", merged["word2"])
+merged["count"] = 0
+df_wordtag = pd.DataFrame(merged.groupby(["word2", "bin_tag"], as_index = False)["count"].agg('size'))
 
+df_wtp = df_wordtag.pivot(index = "word2", columns = "bin_tag", values = "size")
+df_wtp = df_wtp.fillna(0)
+# Get row percents
+res = df_wtp.div(df_wtp.sum(axis=1), axis=0)
+res["word"] = res.index
+res = res.reset_index(drop = True)
+res2 = res[["word", "1"]]
 
+merged["top80"] = np.where(merged["prop1s"] >= 0.8, 1, 0)
+merged["top60"] = np.where(((merged["prop1s"] >= 0.6) & (merged["prop1s"] < 0.8)), 1, 0)
+merged["top40"] = np.where(((merged["prop1s"] >= 0.4) & (merged["prop1s"] < 0.6)), 1, 0)
+merged["top20"] = np.where(((merged["prop1s"] >= 0.2) & (merged["prop1s"] < 0.4)), 1, 0)
+
+del(df)
+df = merged.copy()
+del(merged)
 
 # Some interesting keywords to note:
 # Greek words: alpha, beta, gamma, delta, kappa are classified as being part of
@@ -187,19 +325,19 @@ df_wtp.loc[df_wtp["n"] >= 60, "prop1s"].sort_values(0, ascending = False).head(4
 # tagged at least 70% of the time and not already captured by 
 # another variable
 
-trigger = ["alpha", "beta", "gamma", "delta", "kappa",
-           "anti", "polymerase", "receptor", "kinases", 
-           "antigen", "kinase", "CSF", "phosphatase", "c", 
-           "AP", "NF", "cyclin", "Sp1", "IL", "insulin", 
-           "p53", "PKC", "Ras"]
+# trigger = ["alpha", "beta", "gamma", "delta", "kappa",
+#            "anti", "polymerase", "receptor", "kinases", 
+#            "antigen", "kinase", "CSF", "phosphatase", "c", 
+#            "AP", "NF", "cyclin", "Sp1", "IL", "insulin", 
+#            "p53", "PKC", "Ras"]
 
-def target(list):
-    output = [1 if (x in trigger) 
-              else 0 for x in list]
-    return output
+# def target(list):
+#     output = [1 if (x in trigger) 
+#               else 0 for x in list]
+#     return output
 
-target = target(df["word"])
-df["trigger"] = target
+# target = target(df["word"])
+# df["trigger"] = target
 
 
 def ase_finder(search, store):
@@ -261,14 +399,18 @@ len_ids = len(uniq_train_group_ids)
 training_ids = r.sample(uniq_train_group_ids, n_train)
 valid_ids = list(set(uniq_train_group_ids).difference(set(training_ids)))
 # 80/20 split lends itself to 5-fold validation
+features = ["is_camel", "all_caps", "top80", "top60", "top40", "top20", "ase", "bias"]
+
+n_feat = len(features)
+
 
 train = df[df["group_id"].isin(training_ids)]
 y_train = train["bin_tag"]
-x_train = train[["is_camel", "all_caps", "trigger", "ase", "bias"]]
+x_train = train[features]
 
 valid = df[df["group_id"].isin(valid_ids)]
 y_valid = valid["bin_tag"]
-x_valid = valid[["is_camel", "all_caps", "trigger", "ase", "bias"]]
+x_valid = valid[features]
 
 
 def sigmoid(z):
@@ -315,8 +457,8 @@ class SGD(object):
 # Set up SGD
 x = x_train.reset_index(drop = True)
 y = y_train.reset_index(drop = True)
-initial_weights = [0] * 5
-n_iter = 5000
+initial_weights = [0] * n_feat
+n_iter = 1000
 eta = 0.1
 starttime = datetime.now()
 
@@ -337,15 +479,15 @@ print("SGD runtime: ", difftime)
 # the test set.  Don't want to wait on that again.
 # [7.917653315667114, 5.117136751959736, 10.540264679440895, 3.943252142021299, -9.014895739402096]
 #[9.830728851064604, 6.551916215723501, 12.927666067316862, 5.169799672007105, -11.118672541297002]
+# [0.2061024015176023, 2.1136916154587535, 15.801972620700258, 7.5434437523725215, 5.760138518679846, 5.692263464906676, -0.7450213202439026, -9.680296995864309]
 
+# dev_weights = sgd.avg_weights
+# dev_weights_file = open("dev_weights_file.pkl", "wb")
+# pickle.dump(dev_weights, dev_weights_file)
+# dev_weights_file.close()
 
-dev_weights = sgd.avg_weights
-dev_weights_file = open("dev_weights_file.pkl", "wb")
-pickle.dump(dev_weights, dev_weights_file)
-dev_weights_file.close()
-
-# with open("dev_weights_file.pkl", "rb") as file:
-#     dev_weights = pickle.load(file)
+with open("dev_weights_file.pkl", "rb") as file:
+    dev_weights = pickle.load(file)
 
 # Use these weights on the validation set
 
@@ -357,6 +499,8 @@ for row in range(len(x_v)):
     s = sigmoid(np.dot(dev_weights, x_valid_row))
     est.append(s)
 
+
+# pred_class = [(1 if x >= 0.6 else 0) for x in est]
 pred_class = [int(round(x, 0)) for x in est]
 y_v = y_valid.reset_index(drop = True)
 
