@@ -294,7 +294,7 @@ word_sort = word_sort[["word", "prop1s"]].reset_index(drop=True)
 merged = pd.merge(df, word_sort, on="word")
 merged = merged.sort_values(by=["group_id","word_id"], ascending=[True, True]).reset_index(drop = True)
 merged["word2"] = merged["word"]
-merged["word2"] = np.where(merged["n"] < 10, "<UNK>", merged["word2"])
+# merged["word2"] = np.where(merged["n"] < 10, "<UNK>", merged["word2"])
 merged["count"] = 0
 df_wordtag = pd.DataFrame(merged.groupby(["word2", "bin_tag"], as_index = False)["count"].agg('size'))
 
@@ -304,7 +304,7 @@ df_wtp = df_wtp.fillna(0)
 res = df_wtp.div(df_wtp.sum(axis=1), axis=0)
 res["word"] = res.index
 res = res.reset_index(drop = True)
-res2 = res[["word", "1"]]
+res2 = res[["word", 1]]
 
 merged["top80"] = np.where(merged["prop1s"] >= 0.8, 1, 0)
 merged["top60"] = np.where(((merged["prop1s"] >= 0.6) & (merged["prop1s"] < 0.8)), 1, 0)
@@ -353,6 +353,59 @@ ase = []
 ase = ase_finder(df["word"], ase)
 df["ase"] = ase
 
+
+def ene_finder(search, store):
+    for word in range(len(search)):
+        if (bool((re.search(r'ene\b', search[word])))):
+            store.append(1)
+        else:
+            store.append(0)
+    return store
+
+ene = []
+ene = ene_finder(df["word"], ene)
+df["ene"] = ene
+
+def ein_finder(search, store):
+    for word in range(len(search)):
+        if (bool((re.search(r'ein\b', search[word])) or 
+                (re.search(r'eins\b', search[word])))):
+            store.append(1)
+        else:
+            store.append(0)
+    return store
+
+ein = []
+ein = ein_finder(df["word"], ein)
+df["ein"] = ein
+
+
+def tor_finder(search, store):
+    for word in range(len(search)):
+        if (bool((re.search(r'tor\b', search[word])) or 
+                (re.search(r'tors\b', search[word])))):
+            store.append(1)
+        else:
+            store.append(0)
+    return store
+
+tor = []
+tor = tor_finder(df["word"], tor)
+df["tor"] = tor
+
+
+def hyphen_finder(search, store):
+    for word in range(len(search)):
+        if (bool((re.search('\-\B', search[word])))):
+            store.append(1)
+        else:
+            store.append(0)
+    return store
+
+hyp = []
+hyp = hyphen_finder(df["word"], hyp)
+df["hyp"] = hyp
+
 # How many words are in the typical tag?
 
 
@@ -399,7 +452,7 @@ len_ids = len(uniq_train_group_ids)
 training_ids = r.sample(uniq_train_group_ids, n_train)
 valid_ids = list(set(uniq_train_group_ids).difference(set(training_ids)))
 # 80/20 split lends itself to 5-fold validation
-features = ["is_camel", "all_caps", "top80", "top60", "top40", "top20", "ase", "bias"]
+features = ["is_camel", "all_caps", "top80", "top60", "top40", "top20", "ase", "ene", "ein", "tor", "hyp", "bias"]
 
 n_feat = len(features)
 
@@ -480,14 +533,18 @@ print("SGD runtime: ", difftime)
 # [7.917653315667114, 5.117136751959736, 10.540264679440895, 3.943252142021299, -9.014895739402096]
 #[9.830728851064604, 6.551916215723501, 12.927666067316862, 5.169799672007105, -11.118672541297002]
 # [0.2061024015176023, 2.1136916154587535, 15.801972620700258, 7.5434437523725215, 5.760138518679846, 5.692263464906676, -0.7450213202439026, -9.680296995864309]
+# [0.22872662707657518, 0.896647229494196, 22.542057341836646, 12.97851857295616, 9.21817485911495, 6.7490203893959935, -2.6087885741969097, -1.603361385413719, -0.473700724897468, -1.6654594345280764, -0.9273522767183622, -11.720065246327804]
+# ["is_camel", "all_caps", "top80", "top60", "top40", "top20", "ase", "ene", "ein", "tor", "hyp", "bias"]
+# Note: the extra features (ene, ein, tor, hyp) decreased the prec.  Will drop 
+# before submission and use the penultimate set of weights saved here in the comment.
 
-# dev_weights = sgd.avg_weights
-# dev_weights_file = open("dev_weights_file.pkl", "wb")
-# pickle.dump(dev_weights, dev_weights_file)
-# dev_weights_file.close()
+dev_weights = sgd.avg_weights
+dev_weights_file = open("dev_weights_file.pkl", "wb")
+pickle.dump(dev_weights, dev_weights_file)
+dev_weights_file.close()
 
-with open("dev_weights_file.pkl", "rb") as file:
-    dev_weights = pickle.load(file)
+# with open("dev_weights_file.pkl", "rb") as file:
+#     dev_weights = pickle.load(file)
 
 # Use these weights on the validation set
 
