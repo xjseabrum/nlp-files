@@ -359,7 +359,7 @@ print("SGD runtime: ", difftime)
 # Pickle the dev weights for later use.  Takes 91 min to run
 # the test set.  Don't want to wait on that again.
 # [0.2061024015176023, 2.1136916154587535, 15.801972620700258, 7.5434437523725215, 5.760138518679846, 5.692263464906676, -0.7450213202439026, -9.680296995864309]
-# [4.772356777314931, 2.766026916462169, 20.275292106028118, 11.930428040186895, 8.65182136820606, 5.788048111435737, -2.3497690491246526, -12.504815948355416]
+# [0.794689246437309, 0.9555046737358514, 28.45553444750359, 15.350487774377099, 11.395658680398874, 8.308560187398774, -3.705105971234466, -14.790733946748693]
 
 dev_weights = sgd.avg_weights
 dev_weights_file = open("dev_weights_file.pkl", "wb")
@@ -410,13 +410,18 @@ v["PredLbl"] = adj_lbl
 
 # Save the actual tags and pred to file
 # to run the eval script.
-word_tags = v[["word_id", "word2", "tag"]]
-word_pred = v[["word_id", "word2", "PredLbl"]]
+word_tags = v[["word_id", "word", "tag"]]
+word_pred = v[["word_id", "word", "PredLbl"]]
 
 word_tags.to_csv("actual_tags.txt", sep="\t", header = False, index = False)
 word_pred.to_csv("pred_tags.txt", sep="\t", header = False, index = False)
 
-# Results using evalNER.py:
+# Results using evalNER.py, 1k iter:
 # Precision:  0.4432086282440175 
 # Recall:  0.4241935483870968
 # F1-measure:  0.4334926652381737
+
+# Results using evalNER.py, 5k iter:
+# Precision:  0.4019178082191781 
+# Recall:  0.4732258064516129 
+# F1-measure:  0.4346666666666667
