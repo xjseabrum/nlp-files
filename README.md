@@ -11,4 +11,4 @@ The class (which I took under Jim Martin at CU Boulder in Fall 2021) went over m
 :-=
 
 # Future Plans
-:-=
+I currently do not have any future plans to update this repository.  To see more about what I have done with the NLP techniques that I have learned from this class, see either my [Neural Nets Deep Learning Repo](https://github.com/xjseabrum/nndl_final_project) or my [Computational Models of Discourse Repo](https://github.com/xjseabrum/comp_disc_S22_proj).
