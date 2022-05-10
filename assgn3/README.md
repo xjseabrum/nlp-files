@@ -1,0 +1,1 @@
+The assignment here is to determine the correct BIO-tagging for entities in a biomedical text.  The report is [here](), the code for the feature approach is [here]() and the "dumb-as-bricks" approach's code is [here]().
